@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>City Drive 3D</title>
+<style>
+html,body{margin:0;height:100%;background:#111;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(0,0,0,.4);color:#fff;font-weight:700;font-size:20px}
+#pg{width:min(30vw,260px);font-size:12px;font-weight:500;text-align:center}
+#pg b{display:block;height:10px;background:#fff3;margin-bottom:3px}#pg i{display:block;height:100%;width:0;background:#f2b705}
+#msg{position:fixed;top:26%;left:0;right:0;text-align:center;color:#f2b705;font:700 28px system-ui;text-shadow:0 2px 6px #000;opacity:0;pointer-events:none}
+.ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(10,20,30,.8);color:#fff;text-align:center;padding:20px}
+.ov.h{display:none}
+h1{margin:0;font-size:clamp(34px,8vw,64px)}
+p{margin:0;max-width:44ch;opacity:.88;line-height:1.5}
+.go{font-size:20px;padding:14px 36px;border:0;border-radius:10px;background:#f2b705;color:#111;font-weight:700;cursor:pointer}
+.pad{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:12px}
+#pl{left:14px}#pr{right:14px}
+.b{width:clamp(66px,16vw,96px);height:clamp(66px,16vw,96px);border-radius:50%;border:3px solid #fff9;background:#0007;color:#fff;font:700 15px system-ui;touch-action:none}
+.b.on{background:#f2b705cc;color:#111}
+#br{border-color:#ff6b6b}#gs{border-color:#6bff8f}
+.b:focus-visible,.go:focus-visible{outline:3px solid #fff;outline-offset:3px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><span id="sp">0 km/h</span><div id="pg"><b><i id="pb"></i></b><span id="pt">Level 1</span></div><span id="co">Coins 0</span></div>
+<div id="msg"></div>
+<div class="pad" id="pl"><button class="b" data-k="l" aria-label="Steer left">&#9664;</button><button class="b" data-k="r" aria-label="Steer right">&#9654;</button></div>
+<div class="pad" id="pr"><button class="b" id="br" data-k="b">BRAKE</button><button class="b" id="gs" data-k="g">GAS</button></div>
+<div class="ov" id="ov">
+<h1 id="t">City Drive 3D</h1>
+<p id="m">Drive the mission distance without crashing. Overtake traffic for coins. Cars come straight at you on the right lane. Levels change from day to sunset to night.</p>
+<p id="k">Keys: Arrow keys or WASD. Space = brake. On phone use the on-screen buttons.</p>
+<button class="go" id="go">Start</button>
+</div>
+<script>
+(function(){
+var E=function(i){return document.getElementById(i)},cv=E('c'),g=cv.getContext('2d'),W,H,HY,F,CX=0,CY=3.6,CZ=9.5;
+function rs(){var d=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0);HY=H*.4}
+addEventListener('resize',rs);rs();
+function hx(h){return[h>>16&255,h>>8&255,h&255]}
+var PAL=[{s:hx(0x8fd0f2),g:hx(0x3f8a3a),a:1,n:0},{s:hx(0xf0a46e),g:hx(0x5a7a34),a:.8,n:0},{s:hx(0x14213d),g:hx(0x1f3a2a),a:.45,n:1}],pal=PAL[0],AM=1;
+var COL=[0xe63946,0xf4a261,0x2a9d8f,0xe9c46a,0x8d5cf6,0xf1f1f1,0x3a86ff].map(hx),LN=[-4,0,4],LEN=300,sc=[];
+function mix(c,k,d){var f=Math.max(0,Math.min(1,(d-30)/130)),s=pal.s;return'rgb('+Math.min(255,c[0]*k*(1-f)+s[0]*f|0)+','+Math.min(255,c[1]*k*(1-f)+s[1]*f|0)+','+Math.min(255,c[2]*k*(1-f)+s[2]*f|0)+')'}
+function P3(x,y,z){var d=Math.max(CZ-z,.3);return[W/2+(x-CX)*F/d,HY-(y-CY)*F/d]}
+function poly(p,c){g.fillStyle=c;g.beginPath();g.moveTo(p[0][0],p[0][1]);for(var i=1;i<p.length;i++)g.lineTo(p[i][0],p[i][1]);g.closePath();g.fill()}
+function bx(cx,y0,cz,w,h,dp,col,em){
+var x0=cx-w/2,x1=cx+w/2,y1=y0+h,z0=cz-dp/2,z1=cz+dp/2,d=CZ-cz;if(CZ-z1<.4)return;
+var f=function(m){return mix(col,em?1.1:AM*m,d)};
+if(CY>y1)poly([P3(x0,y1,z0),P3(x1,y1,z0),P3(x1,y1,z1),P3(x0,y1,z1)],f(1));
+if(CX<x0)poly([P3(x0,y0,z0),P3(x0,y0,z1),P3(x0,y1,z1),P3(x0,y1,z0)],f(.62));
+if(CX>x1)poly([P3(x1,y0,z0),P3(x1,y0,z1),P3(x1,y1,z1),P3(x1,y1,z0)],f(.62));
+poly([P3(x0,y0,z1),P3(x1,y0,z1),P3(x1,y1,z1),P3(x0,y1,z1)],f(.85))}
+function gq(x0,x1,za,zb,col){za=Math.min(za,CZ-.8);if(za<=zb)return;poly([P3(x0,0,za),P3(x1,0,za),P3(x1,0,zb),P3(x0,0,zb)],col)}
+function drawCar(c){var x=c.x,z=c.z,o=c.onc?-.2:.2,k=c.col;
+[[-1,-1.2],[1,-1.2],[-1,1.3],[1,1.3]].forEach(function(w){bx(x+w[0]*.95,0,z+w[1],.3,.76,.76,[17,17,17])});
+bx(x,.28,z,1.9,.72,4,k);bx(x,1,z+o,1.6,.62,2,k);bx(x,1.06,z+o,1.64,.4,2.04,[27,43,58]);
+var lc=c.onc?[255,246,176]:(c.br?[255,59,59]:[200,31,31]);
+bx(x-.6,.6,z+2.02,.5,.18,.1,lc,1);bx(x+.6,.6,z+2.02,.5,.18,.1,lc,1)}
+for(var i=0;i<30;i++)sc.push({t:'d',z:-i*10});
+for(var s=-1;s<2;s+=2){
+for(i=0;i<20;i++){var h=6+Math.random()*26,w=6+Math.random()*8,l=.35+Math.random()*.25;sc.push({t:'b',x:s*(11+w/2+Math.random()*8),w:w,h:h,z:-i*15-Math.random()*5,col:[l*255*.8|0,l*255*.9|0,l*255]})}
+for(i=0;i<8;i++)sc.push({t:'l',x:s*7.4,z:-i*37.5})}
+var st='menu',level=1,coins=0,coins0=0,dist=0,vp=0,px=0,tr=[],sp=0,mt=0,shake=0,best=0,key={},tp={},osc,gn,au,pl={t:'c',x:0,z:0,col:hx(0xffd23f),onc:0,br:0};
+try{best=+localStorage.getItem('cd3_best')||0}catch(e){}
+function goal(){return 800+level*400}
+function applyLevel(){pal=PAL[(level-1)%3];AM=pal.a}
+function snd(){if(osc)return;try{au=new (window.AudioContext||window.webkitAudioContext)();osc=au.createOscillator();gn=au.createGain();osc.type='sawtooth';osc.frequency.value=50;gn.gain.value=0;osc.connect(gn);gn.connect(au.destination);osc.start()}catch(e){osc=null}}
+function reset(){dist=0;vp=0;px=0;tr=[];sp=0;coins=coins0;st='play';applyLevel();E('ov').classList.add('h')}
+function show(t,m,b){E('t').textContent=t;E('m').textContent=m;E('k').style.display=st=='menu'?'':'none';E('go').textContent=b;E('ov').classList.remove('h')}
+E('go').onclick=function(){snd();if(au&&au.state=='suspended')au.resume();if(st=='menu'){level=1;coins0=0}else if(st=='win'){level++;coins0=coins}reset()};
+addEventListener('keydown',function(e){key[e.code]=1;if(e.code=='Space'||e.code.indexOf('Arrow')==0)e.preventDefault()});
+addEventListener('keyup',function(e){key[e.code]=0});
+document.querySelectorAll('.b').forEach(function(b){var k=b.dataset.k;
+function on(e){e.preventDefault();tp[k]=1;b.classList.add('on')}
+function of(){tp[k]=0;b.classList.remove('on')}
+b.addEventListener('pointerdown',on);['pointerup','pointerleave','pointercancel'].forEach(function(n){b.addEventListener(n,of)});b.addEventListener('contextmenu',function(e){e.preventDefault()})});
+function say(t){var m=E('msg');m.textContent=t;m.style.opacity=1;mt=1.2}
+function spawn(){var i=Math.random()*3|0,x=LN[i];if(!tr.every(function(c){return c.x!=x||c.z>-130}))return;
+var onc=i==2;tr.push({t:'c',x:x,z:-160,v:onc?-(14+Math.random()*8):6+Math.random()*10+level,gap:99,done:0,onc:onc,col:COL[Math.random()*COL.length|0],br:0})}
+function end(win){st=win?'win':'over';shake=.6;var d=Math.round(dist);
+if(!win&&d>best){best=d;try{localStorage.setItem('cd3_best',best)}catch(e){}}
+if(win)show('Mission complete!','Level '+level+' done. Coins: '+coins+'. Next level has more and faster traffic.','Next level');
+else show('Crashed!','You drove '+d+' m of '+goal()+' m. Best run: '+best+' m.','Try again')}
+function step(dt){
+var gas=key.ArrowUp||key.KeyW||tp.g,br=key.ArrowDown||key.KeyS||key.Space||tp.b,sx=((key.ArrowRight||key.KeyD||tp.r)?1:0)-((key.ArrowLeft||key.KeyA||tp.l)?1:0);
+if(gas)vp+=14*dt;else vp-=3*dt;if(br)vp-=32*dt;
+if(Math.abs(px)>6.3){vp-=18*dt;shake=Math.max(shake,.15)}
+vp=Math.max(0,Math.min(45,vp));
+px+=sx*dt*11*(.35+.65*Math.min(vp,20)/20);px=Math.max(-8.5,Math.min(8.5,px));
+pl.x=px;pl.br=br?1:0;dist+=vp*dt;
+sp-=dt;if(sp<=0){spawn();sp=Math.max(.45,1.25-level*.12)*(.7+Math.random()*.6)}
+for(var i=tr.length-1;i>=0;i--){var c=tr[i];c.z+=(vp-c.v)*dt;
+if(Math.abs(c.z)<10)c.gap=Math.min(c.gap,Math.abs(c.x-px));
+if(Math.abs(c.z)<4.2&&Math.abs(c.x-px)<1.8){end(false);return}
+if(c.z>4.2&&!c.done){c.done=1;var near=c.gap<3&&vp>12;coins+=near?3:1;say(near?'Close call! +3':'+1')}
+if(c.z>8||c.z<-210)tr.splice(i,1)}
+if(dist>=goal())end(true)}
+function render(){
+F=H*(1+vp*.004);var sh=shake>0?.25:0;CX=px*.7+(Math.random()-.5)*sh;CY=3.6+(Math.random()-.5)*sh;
+var sk=g.createLinearGradient(0,0,0,HY);sk.addColorStop(0,mix(pal.s,.7,0));sk.addColorStop(1,mix(pal.s,1,0));g.fillStyle=sk;g.fillRect(0,0,W,HY+1);
+g.fillStyle=mix(pal.g,AM,0);g.fillRect(0,HY,W,H-HY);
+var off=dist%12,n0=Math.floor(dist/12),nz=CZ-.8;
+for(var k=0;k<21;k++){var a=nz-k*12+off,b=a-12,par=(k+n0)&1;
+gq(-300,300,a,b,mix(pal.g,AM*(par?.9:1),0));gq(-6.5,6.5,a,b,mix([59,63,70],AM*(par?.92:1),0))}
+gq(-6.35,-6.05,nz,-240,mix([238,238,238],AM,0));gq(6.05,6.35,nz,-240,mix([238,238,238],AM,0));gq(1.91,2.09,nz,-240,mix([242,183,5],AM,0));
+sc.forEach(function(o){if(o.t=='d')gq(-2.09,-1.91,o.z,o.z-4,mix([238,238,238],AM,0))});
+var fg=g.createLinearGradient(0,HY-2,0,HY+H*.16),sc2='rgb('+pal.s.join(',')+')';fg.addColorStop(0,sc2);fg.addColorStop(1,'rgba('+pal.s.join(',')+',0)');g.fillStyle=fg;g.fillRect(0,HY-2,W,H*.16+2);
+var all=sc.filter(function(o){return o.t!='d'}).concat(tr,[pl]);all.sort(function(a,b){return a.z-b.z});
+all.forEach(function(o){if(CZ-o.z<1.5||CZ-o.z>230)return;
+if(o.t=='b')bx(o.x,0,o.z,o.w,o.h,o.w,o.col);
+else if(o.t=='l'){bx(o.x,0,o.z,.2,6,.2,[85,85,85]);bx(o.x,6,o.z,.9,.3,.9,pal.n?[255,242,168]:[190,190,190],pal.n)}
+else drawCar(o)})}
+var last=0;
+function loop(t){requestAnimationFrame(loop);var dt=Math.min((t-last)/1000||0,.05);last=t;
+if(st=='play')step(dt);
+var v=st=='play'?vp:0;
+sc.forEach(function(o){o.z+=v*dt;if(o.z>12)o.z-=LEN});
+if(shake>0)shake-=dt;if(mt>0){mt-=dt;E('msg').style.opacity=Math.min(1,mt)}
+render();
+if(osc){osc.frequency.value=45+vp*5;gn.gain.value=st=='play'?.025:0}
+E('sp').textContent=Math.round(vp*3.6)+' km/h';E('co').textContent='Coins '+coins;
+E('pb').style.width=Math.min(dist/goal()*100,100)+'%';E('pt').textContent='Level '+level+'  '+Math.round(dist)+' / '+goal()+' m'}
+applyLevel();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
